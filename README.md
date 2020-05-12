@@ -1,0 +1,2 @@
+# pnk_speech_command_recognition
+Vietnamese speech command recognition
