@@ -29,7 +29,7 @@ def is_silent(record_data):
 def normalize(record_data):
     """Average the volume out"""
     MAX = 16384
-    
+
     times = float(MAX) / max(abs(i) for i in record_data)
 
     r = array('h')
@@ -51,7 +51,7 @@ def trim(record_data):
                 r.append(i)
         return r
 
-    record_data = _trim(record_data)
+    # record_data = _trim(record_data)
 
     record_data.reverse()
     record_data = _trim(record_data)
@@ -89,6 +89,7 @@ def record():
 
     num_silent = 0
     r = array('h')
+    prev = array('h')
 
     plt.ioff()
     fig, ax = plt.subplots()
@@ -102,6 +103,7 @@ def record():
             stream.stop_stream()
             stream.close()
             p.terminate()
+            plt.close(fig)
             break
         record_data = array('h', stream.read(CHUNK))
         if byteorder == 'big':
@@ -116,14 +118,14 @@ def record():
         if silent and is_recording:
             num_silent += 1
             r.extend(record_data)
-            if num_silent > 40:
+            if num_silent > 10:
                 is_recording = False
                 num_silent = 0
                 print('Stop')
                 sample_width = p.get_sample_size(FORMAT)
                 r = normalize(r)
                 r = trim(r)
-                r = add_silence(r, 0.5)
+                r = add_silence(r, 0.2)
 
                 predict_data(r)
 
@@ -132,13 +134,17 @@ def record():
             num_silent = 0
             if not is_recording:
                 is_recording = True
+                r.extend(prev)
                 print('Recording')
             r.extend(record_data)
+
+        prev = record_data
 
 
 def record_to_file(data, sample_width):
     start = time.time()
 
+    data = struct.pack('<' + ('h' * len(data)), *data)
     file_num = len([name for name in os.listdir(PATH) if name.endswith('.wav')])
     file_path = PATH + '/' + 'rec' + str(file_num) + '.wav'
     wf = wave.open(file_path, 'wb')
@@ -146,21 +152,20 @@ def record_to_file(data, sample_width):
     wf.setsampwidth(sample_width)
     wf.setframerate(RATE)
 
-    for i in data:
-        i = struct.pack('<h', i)
-        wf.writeframes(i)
+    wf.writeframes(data)
 
     wf.close()
-    
+
     predict.predict(file_path)
     end = time.time()
     print("Predict time", end - start)
-    
+
 
 def predict_data(data):
     start = time.time()
     predict.t_predict(data)
     print("Predict time", time.time() - start)
+
 
 if __name__ == '__main__':
     print("Say something")
