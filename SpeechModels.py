@@ -156,8 +156,11 @@ def AttRNNSpeechModel(nCategories, samplingrate=16000,
 
     # rescale sequence
     attVector = L.Dot(axes=[1, 1])([attScores, x])  # [b_s, vec_dim]
-
     x = L.Dense(64, activation='relu')(attVector)
+
+    # y = layer.MFCC(units=128, input_dim=inputLength)(inputs)
+    # x = L.concatenate([x, y])
+
     x = L.Dense(32)(x)
 
     output = L.Dense(nCategories, activation='softmax', name='output')(x)
