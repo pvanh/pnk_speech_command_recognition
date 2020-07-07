@@ -16,6 +16,7 @@ from pydub.silence import split_on_silence
 from pydub import AudioSegment
 from pathlib import Path
 import threading
+
 CHUNK = 1024
 
 THRESHOLD = 1400
@@ -29,6 +30,7 @@ is_recording = False
 end = True
 g_time = 0
 
+
 def is_silent(record_data):
     return max(record_data) < THRESHOLD
 
@@ -36,7 +38,7 @@ def is_silent(record_data):
 def normalize(record_data):
     """Average the volume out"""
     MAX = 16384
-    
+
     times = float(MAX) / max(abs(i) for i in record_data)
 
     r = array('h')
@@ -51,7 +53,7 @@ def trim(record_data):
         r = array('h')
 
         for i in rc_data:
-            if not record_start and abs(i) > THRESHOLD:
+            if not record_start and abs(i) > THRESHOLD + 450:
                 record_start = True
                 r.append(i)
             elif record_start:
@@ -97,6 +99,7 @@ def record():
 
     num_silent = 0
     r = array('h')
+    prev = array('h')
 
     plt.ioff()
     fig, ax = plt.subplots()
@@ -110,23 +113,23 @@ def record():
             stream.stop_stream()
             stream.close()
             p.terminate()
+            plt.close(fig)
             break
         record_data = array('h', stream.read(CHUNK))
-        size_buffer = 7
+        # size_buffer = 7
         if byteorder == 'big':
             record_data.byteswap()
-        
+
         line.set_ydata(record_data)
         fig.canvas.draw()
         fig.canvas.flush_events()
-
 
         silent = is_silent(record_data)
 
         if silent and is_recording:
             num_silent += 1
             r.extend(record_data)
-            if num_silent > 20:
+            if num_silent > 3:
                 is_recording = False
                 num_silent = 0
                 print('Stop')
@@ -136,7 +139,7 @@ def record():
                 # r = trim(r)
                 # r = add_silence(r, 0.5)
                 # record_to_file(r, 2)
-                
+
                 # numpy_arr = np.array(r)
                 # audio_segment = pydub.AudioSegment(
                 #     numpy_arr.tobytes(), 
@@ -154,35 +157,34 @@ def record():
                 # for i, chunk in enumerate(audio_chunks):
                 #     predict_data(chunk.get_array_of_samples())
                 # print("len ------ buffer", len(buffer))
-                r = buffer + r
+                # r = buffer + r
                 predict_data(r)
                 r = array('h')
         elif not silent:
             num_silent = 0
             if not is_recording:
                 is_recording = True
+                r.extend(prev)
                 print('--------------------------------------------------')
                 print('Recording')
                 global g_time
                 g_time = time.time()
             r.extend(record_data)
-        else:
-            if len(buffer) < size_buffer*CHUNK:
-                buffer.extend(record_data)
-            else:
-                buffer = buffer[1*CHUNK:size_buffer*CHUNK] + record_data
-                
-            
+        prev = record_data
+        # else:
+        #     if len(buffer) < size_buffer * CHUNK:
+        #         buffer.extend(record_data)
+        #     else:
+        #         buffer = buffer[1 * CHUNK:size_buffer * CHUNK] + record_data
 
 
-
-
-def record_to_file(data, sample_width, label, accuracy,rate):
-
+def record_to_file(data, sample_width, label, accuracy, rate):
     start = time.time()
 
     file_path = PATH + '//' + label
     Path(file_path).mkdir(parents=True, exist_ok=True)
+
+    data = struct.pack('<' + ('h' * len(data)), *data)
     file_num = len([name for name in os.listdir(file_path) if name.endswith('.wav')])
     file_path += '/rec' + str(file_num) + '.wav'
     wf = wave.open(file_path, 'wb')
@@ -190,26 +192,26 @@ def record_to_file(data, sample_width, label, accuracy,rate):
     wf.setsampwidth(sample_width)
     wf.setframerate(rate)
 
-    for i in data:
-        i = struct.pack('<h', i)
-        wf.writeframes(i)
+    wf.writeframes(data)
 
     wf.close()
 
     # predict.predict(file_path)
     # end = time.time()
     # print("Predict time", end - start)
-    
+
+
 def predict_data(data):
     global g_time
     start = time.time()
     label, accuracy = predict.t_predict(data)
-    print("********* Overall time:", time.time()- g_time)
+    print("********* Overall time:", time.time() - g_time)
     # record_to_file(data, 2, label, accuracy)
     label += "_"
-    t = threading.Thread(target=record_to_file, args=(data,2,label, accuracy, RATE))
+    t = threading.Thread(target=record_to_file, args=(data, 2, label, accuracy, RATE))
     t.start()
     print("Predict time", time.time() - start)
+
 
 if __name__ == '__main__':
     print("Say something")
