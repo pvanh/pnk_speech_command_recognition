@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: data-collect-tool
+Version: 1.0.3
+Summary: Data Collect Tool
+Home-page: https://github.com/Artori-kun/SpeechCommandDataCollectingTool
+Author: Nguyen Minh Hieu
+Author-email: nguyenminhhieu.it1.k52@gmail.com
+License: UNKNOWN
+Description: A tool to collect speech command data
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
