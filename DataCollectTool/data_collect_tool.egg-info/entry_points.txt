@@ -1,0 +1,3 @@
+[gui_scripts]
+data-collect-tool = DataCollectTool.__main__:main
+
